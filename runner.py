@@ -4,26 +4,29 @@ except:raise
 # @formatter:on
 import asyncio
 import multiprocessing as mp
+import os
 import random
 import signal
 import sys
-import os
 import time
 from functools import partial
 from typing import List, Optional, Set, Tuple, Union
 
 from src.cli import init_argparse
 from src.core import (
-    CPU_COUNT, CPU_PER_PROCESS, DEFAULT_THREADS, FAILURE_BUDGET_FACTOR, FAILURE_DELAY_SECONDS,
-    IT_ARMY_CONFIG_URL, ONLY_MY_IP, REFRESH_OVERTIME, REFRESH_RATE,
-    SCHEDULER_MAX_INIT_FRACTION, SCHEDULER_MIN_INIT_FRACTION, cl, logger, setup_worker_logger
+    cl, CPU_COUNT, CPU_PER_PROCESS, DEFAULT_THREADS, FAILURE_BUDGET_FACTOR, FAILURE_DELAY_SECONDS, IT_ARMY_CONFIG_URL,
+    logger, ONLY_MY_IP, REFRESH_OVERTIME, REFRESH_RATE, SCHEDULER_MAX_INIT_FRACTION, SCHEDULER_MIN_INIT_FRACTION,
+    setup_worker_logger,
 )
 from src.i18n import DEFAULT_LANGUAGE, set_language, translate as t
 from src.mhddos import AsyncTcpFlood, AsyncUdpFlood, AttackSettings, main as mhddos_main
 from src.output import print_banner, print_status, show_statistic
 from src.proxies import ProxySet
-from src.system import WINDOWS_WAKEUP_SECONDS, fix_ulimits, is_latest_version, setup_event_loop
+from src.system import fix_ulimits, is_latest_version, setup_event_loop, WINDOWS_WAKEUP_SECONDS
 from src.targets import Target, TargetsLoader
+
+
+IS_PYINSTALLER = getattr(sys, 'frozen', False) and hasattr(sys, '_MEIPASS')
 
 
 class GeminoCurseTaskSet:
@@ -70,7 +73,8 @@ class GeminoCurseTaskSet:
         return len(self._pending)
 
     def _launch(self, runnable) -> None:
-        if self._shutdown_event.is_set(): return
+        if self._shutdown_event.is_set():
+            return
         on_connect = self._loop.create_future()
         on_connect.add_done_callback(partial(self._on_connect, runnable))
         task = self._loop.create_task(runnable.run(on_connect))
@@ -391,6 +395,9 @@ def main():
                 f"{cl.RED}{t('The number of copies is automatically reduced to')} {max_copies}{cl.RESET}"
             )
 
+    if IS_PYINSTALLER and not args.proxies:
+        raise RuntimeError('System proxies are not supported in this version')
+
     print_banner(args)
 
     if args.table:
@@ -415,7 +422,7 @@ def main():
     processes = []
     mp.set_start_method("spawn")
     for ind in range(num_copies):
-        pos = (ind+1, num_copies) if num_copies > 1 else None
+        pos = (ind + 1, num_copies) if num_copies > 1 else None
         p = mp.Process(target=_worker_process, args=(args, lang, pos), daemon=True)
         processes.append(p)
 
@@ -430,5 +437,6 @@ def main():
 
 
 if __name__ == '__main__':
-    mp.freeze_support()
+    if IS_PYINSTALLER:
+        mp.freeze_support()
     main()

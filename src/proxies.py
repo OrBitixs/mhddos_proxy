@@ -10,14 +10,6 @@ from .dns_utils import resolve_all
 from .system import fetch, read_or_fetch
 
 
-# @formatter:off
-_globals_before = set(globals().keys()).union({'_globals_before'})
-# noinspection PyUnresolvedReferences
-from .vendor.load_proxies import *
-obtain_proxies = globals()[set(globals().keys()).difference(_globals_before).pop()]
-# @formatter:on
-
-
 INVALID_SCHEME_ERROR = "Invalid scheme component"
 INVALID_PORT_ERROR = "Invalid port component"
 
@@ -119,9 +111,11 @@ async def load_provided_proxies(proxies_file: str) -> Optional[List[str]]:
 
 
 async def load_system_proxies():
+    from .vendor.load_proxies import O0O0O0OO0O0O0000
+
     raw = await fetch(random.choice(PROXIES_URLS))
     try:
-        proxies = obtain_proxies(raw)
+        proxies = O0O0O0OO0O0O0000(raw)
     except Exception:
         proxies = []
     proxies = list(map(normalize_url, proxies))
